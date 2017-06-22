@@ -7,23 +7,24 @@
 	total_score
 	current_score
 	status: playing/holding
-- player_list = []
+- `player_list = []`
 - Update object's data every turn  
 
 
 #### Commands:
 - input score_cap at the begin
-- r roll
-- b bank
+- `r` roll
+- `b` bank
 - cheats
 
 
 ## Game conditions:  
-- Pig: one dice is 1 -> reset current score, ends turn
-- Snake-eyes: both dices are 1s -> reset total score, ends turn
-- DOUBLE: same values on dices -> forced to choose roll
-- Winning: Reach the score_cap
-Display:
+- _Pig_: one dice is 1 -> reset current score, ends turn
+- _Snake-eyes_: both dices are 1s -> reset total score, ends turn
+- _DOUBLE_: same values on dices -> forced to choose roll
+- _Winning_: Reach the score_cap
+
+## Display:
 - Print the values in player object
 
 ## Mechanism:
