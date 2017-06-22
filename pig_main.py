@@ -1,15 +1,14 @@
 import random, uuid
 
 class Player:
-	
 	def __init__(self, name):
-		self._id = uuid.uuid4().hex
 		self.name = name
+		self._id = uuid.uuid4().hex
 		self.score = 0
 
 
-class Turn:
 
+class Turn:
 	def __init__(self, player):
 		self.player = player
 		self.score = 0
@@ -20,167 +19,175 @@ class Turn:
 
 
 	def run(self):
+
 		while self.is_active:
-			command = self.action_selection()
+			command = self.prompt_player()
 			if command in ('r', 'roll'):
-				self.roll()
+				self.roll()	
 			elif command in ('b', 'bank') and self.can_bank:
 				self.bank()
-				print(self.player.name, " total score:", self.player.score)
 			elif command in ('b', 'bank') and not self.can_bank:
 				print("You cannot bank now, please choose r!")
+			
+			print("="*80)
 
-
-	def action_selection(self):
+	def prompt_player(self):
 		is_valid = False
 		while not is_valid:
-			command = input("Enter r for roll, b for bank:\n")
-			if command not in ("r", "b", "bank", "roll"):
-				print("'{}' is not a valid choice.".format(command))
-			else:
+			response = input("Enter r for roll, b for bank:\n").strip().lower()
+			if response in ("r", "b", "roll", "bank"):
+				command = response
 				is_valid = True
-		return command.lower()
+			else:
+				print("'{}' is not a valid option.".format(response))
+		return command	
 
 
 	def bank(self):
 		self.player.score += self.score
+		self.can_bank = False
 		self.is_active = False
+		print(self.player.name, " total score:", self.player.score)
 
 
 	def roll(self):
-		result_dice, roll_score = self._dice_sim()
+		result_dice = self._dice_sim()
+		roll_score = sum(result_dice)
+
 		self.score += roll_score
 		
-		print(self.player.name, " rolled: ", *result_dice)
+		print(self.player.name, " Result: ", *result_dice)
 		
-		if result_dice.count(1) == 2:
-			
+		if(result_dice[0] == result_dice[1]) and (result_dice[0] == "1"):
+			# handles snake_eyes
 			self._snake_eyes()
+		
+		elif(result_dice[0] == result_dice[1]):
+			# handles doubles
+			self.doubles(roll_score)
 
-		elif result_dice[0] == result_dice[1]:
-			
-			self._doubles(roll_score)
-			
-		elif result_dice[0] == 1 or result_dice[1] == 1:
-			
+		elif(result_dice[0] == 1) or (result_dice[1] == 1):
+			# handles pig
 			self._pig()
 
 		else:
-
+			# default
 			self._default(roll_score)
 
-
-	def _pig(self):
-		print("Pig!")
-		self.score = 0
-		self.is_active = self.can_bank = False
-		print(self.player.name, " total score:", self.player.score)
-
-
+	
 	def _snake_eyes(self):
-		print("Snake-eyes!")
-		self.player.score = 0
 		self.score = 0
-		self.can_bank = self.is_active = False
+		self.can_bank = False
+		self.is_active = False
+
+		self.player.score = 0
+		print("Snake-eyes!")
 		print(self.player.name, " total score:", self.player.score)
 
-
-	def _doubles(self, roll_score):
-		print("Doubles!")
+	
+	def _pig(self):
+		self.score = 0
 		self.can_bank = False
+		self.is_active = False
+
+		print("Pig!")
+		print(self.player.name, " total score:", self.player.score)
+
+	
+	def _doubles(self, roll_score):
+		self.can_bank = False
+		
+		print("Doubles!")
 		print("Roll Score:", roll_score)
-		print("Trun Score:", self.score)
-		print("Game Score:", self.player.score, "\n")
+		print("Current Score:", self.score, "\n")
 
 
 	def _default(self, roll_score):
 		self.can_bank = True
 		print("Roll Score:", roll_score)
-		print("Trun Score:", self.score)
-		print("Game Score:", self.player.score, "\n")
+		print("Current Score:", self.player.score, "\n")
 
 
 	def _dice_sim(self):
-		res_list = [random.randrange(1, 6) for i in range(2)]
-		return res_list, sum(res_list)
+		return [random.randrange(1, 6) for _ in range(2)]
 
 
 class Game:
-	
-	def __init__(self, score_cap):
+
+	def __init__(self):
+		self.max_score = 0
+		self.player_count = 0
 		self.players = []
 		self.log = []
-		self.score_cap = score_cap
-
-	def play(self):
-		self.setup()
-		self.run()
+		self.turn_count = 0
+		self.is_active = True
 
 	def run(self):
-		
-		current_player_idx = len(self.players) - 1
-
-		while not self.is_game_over():
-			current_player_idx = (current_player_idx + 1) % len(self.players)
-			player = self.players[current_player_idx]
-			print("{} it is your turn. Your current score is {}".format(player.name, player.score))
-			
-			self.log.append(Turn(player))
-
-		winner = self.log[-1].player
-		print("Congratulations {}!!!  You Win!!!".format(winner.name))
+		self.setup()
+		self.play()
 
 	def setup(self):
-		player_count = self.get_number_of_players()
-		for i in range(player_count):
-			self.add_player("Player #{}".format(i + 1))
+		self.display_instructions()
+		self.set_max_score()
+		self.set_number_or_players()
 		
+		for _ in range(self.player_count):
+			self.add_player()
 
-	def get_number_of_players(self):
+	def play(self):
+		while self.is_active:
+			player = self.players[self.turn_count%len(self.players)]
+			self.log.append(Turn(player))
+			self.end_turn()
+
+	def set_max_score(self):
 		is_valid = False
 		while not is_valid:
-			player_count = input("How many players?\n")
-			if not player_count.isnumeric():
-				print("'{}' is not a whole number.\n Please enter a whole number.".format(player_count))
-			else:
+			response = input("Please set the max score(Enter a whole number):\n").strip()
+			if response.isnumeric():
+				self.max_score = int(response)
 				is_valid = True
-		return int(player_count.strip())
+			else:
+				print("'{}' is not a whole number.".format(response))
 
-	def add_player(self, title):
-		name = ""
-		while not name:
-			name = input("{}, please enter your name: ".format(title))
-			name = name.strip()
-		self.players.append(Player(name))
 
+	def set_number_or_players(self):
+		is_valid = False
+		while not is_valid:
+			response = input("Please set the number of players(Enter a whole number):\n").strip()
+			if response.isnumeric():
+				self.player_count = int(response)
+				is_valid = True
+			else:
+				print("'{}' is not a whole number.".format(response))
+
+	def add_player(self):
+		is_valid = False
+		while not is_valid:
+			response = input("Please enter your name:\n").strip()
+			if response.isalpha():
+				self.players.append(Player(response))
+				is_valid = True
+			else:
+				print("'{}' is not a valid name.".format(response))
+
+	def display_instructions(self):
+		print("<Insturctions got here>")
+
+
+	def end_turn(self):
+		self.is_game_over()
+		self.turn_count += 1
 
 	def is_game_over(self):
-		return any(player.score >= self.score_cap for player in self.players)
-
+		# if game is over set self.is_active to false
+		self.is_active = not any(player.score >= self.max_score for player in self.players)
 
 
 
 def main():
-	has_stopped_playing = False
-
-	prompt = "Would you like to play PIG?(Y/N)"
-	while not has_stopped_playing:	
-		choice = input(prompt).strip().lower()
-		while choice not in ("yes", "no", "y", "n"):
-			print("'{}' is not a valid choice. \n Please enter yes or no when prompted.".format(choice))
-			choice = input(prompt).strip().lower()
-
-		if choice in ("yes", "y"):
-			max_score = input("What score would you like to play to?(Please enter a whole number greater than 0)\n")
-			while not max_score.isnumeric() or int(max_score) < 1:
-				max_score = input("'{}' is not a vaild option. Please enter a whole number greater than 0 below.".format(max_score)).strip()
-
-			game = Game(int(max_score))
-			game.play()
-			prompt = "Would you like to play PIG again?(Y/N)"
-		else:
-			has_stopped_playing = True
-			print("Thanks for playing!!")
+	game = Game()
+	game.run()
 
 if __name__ == '__main__':
 	main()
